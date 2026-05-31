@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cold Email Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Bricolage+Grotesque:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08090b;--bg2:#0f1115;--bg3:#161820;--bg4:#1e2028;
+  --border:#252730;--border2:#323540;
+  --text:#eeeef2;--text2:#8888a0;--text3:#454558;
+  --green:#22dd88;--green-d:#0a2a1a;
+  --yellow:#f5c542;--yellow-d:#2a2200;
+  --red:#ff5566;--red-d:#2a0a0f;
+  --blue:#5599ff;--blue-d:#0a1530;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'Bricolage Grotesque',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+
+/* scanline effect */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:999;}
+
+.wrap{max-width:860px;margin:0 auto;padding:2.5rem 1.5rem 5rem;}
+
+/* header */
+.hdr{margin-bottom:2.5rem;}
+.hdr-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;flex-wrap:wrap;gap:12px;}
+.hdr-brand{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:10px;}
+h1{font-size:clamp(26px,4.5vw,44px);font-weight:800;line-height:1.08;letter-spacing:-0.03em;}
+h1 .accent{color:var(--green);}
+.hdr-sub{font-family:var(--mono);font-size:12px;color:var(--text2);margin-top:10px;line-height:1.7;}
+.live-badge{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--text2);}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 1.5s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* two-col layout */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px;}
+@media(max-width:640px){.two-col{grid-template-columns:1fr;}}
+
+.field-block{display:flex;flex-direction:column;gap:6px;}
+label{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.15em;text-transform:uppercase;}
+input[type=text]{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:6px;
+  font-family:var(--mono);font-size:13px;color:var(--text);
+  padding:10px 14px;outline:none;transition:border-color 0.15s;width:100%;
+}
+input:focus{border-color:var(--green);}
+input::placeholder{color:var(--text3);}
+
+textarea{
+  width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;
+  font-family:var(--mono);font-size:12.5px;color:var(--text);
+  padding:1.25rem;resize:vertical;min-height:220px;outline:none;
+  transition:border-color 0.15s;line-height:1.75;
+}
+textarea:focus{border-color:var(--green);}
+textarea::placeholder{color:var(--text3);}
+
+.tools-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+.tool-label{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.1em;}
+.eg-btn{font-family:var(--mono);font-size:10px;padding:5px 12px;border:1px solid var(--border2);border-radius:4px;background:none;color:var(--text2);cursor:pointer;transition:all 0.15s;}
+.eg-btn:hover{border-color:var(--green);color:var(--green);}
+.clear-btn{font-family:var(--mono);font-size:10px;padding:5px 12px;border:1px solid var(--border);border-radius:4px;background:none;color:var(--text3);cursor:pointer;margin-left:auto;}
+.clear-btn:hover{color:var(--red);border-color:var(--red);}
+
+.char-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.char-info{font-family:var(--mono);font-size:10px;color:var(--text3);}
+.word-count{font-family:var(--mono);font-size:10px;}
+
+.analyze-btn{
+  width:100%;padding:18px;background:var(--green);color:#000;
+  font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:0.2em;text-transform:uppercase;
+  border:none;border-radius:8px;cursor:pointer;transition:all 0.15s;margin-bottom:2.5rem;
+}
+.analyze-btn:hover{filter:brightness(1.1);transform:translateY(-1px);}
+.analyze-btn:disabled{background:var(--bg4);color:var(--text3);cursor:not-allowed;transform:none;}
+
+/* results */
+.results{display:none;}
+.results.on{display:block;animation:rise 0.45s ease forwards;}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* score banner */
+.score-banner{
+  border-radius:14px;padding:1.75rem 2rem;margin-bottom:1.5rem;
+  display:flex;align-items:center;justify-content:space-between;gap:1.5rem;
+  border:1px solid;
+}
+.sb-left{}
+.sb-tag{font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:6px;}
+.sb-title{font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-0.02em;}
+.sb-desc{font-family:var(--mono);font-size:12px;line-height:1.7;max-width:460px;color:var(--text2);}
+.sb-score{font-family:var(--mono);font-size:64px;font-weight:600;line-height:1;flex-shrink:0;}
+
+/* dimension grid */
+.dim-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:1.5rem;}
+@media(max-width:580px){.dim-grid{grid-template-columns:1fr;}}
+.dim-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.25rem;transition:border-color 0.2s;}
+.dim-card:hover{border-color:var(--border2);}
+.dc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.dc-name{font-size:13px;font-weight:600;}
+.dc-score{font-family:var(--mono);font-size:12px;font-weight:600;}
+.dc-bar{height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:8px;}
+.dc-fill{height:100%;border-radius:2px;width:0;transition:width 0.9s cubic-bezier(0.4,0,0.2,1);}
+.dc-note{font-family:var(--mono);font-size:11px;color:var(--text2);line-height:1.55;}
+.dc-fix{font-family:var(--mono);font-size:10px;margin-top:6px;padding:4px 8px;border-radius:3px;display:inline-block;}
+
+/* word-level analysis */
+.word-section{margin-bottom:1.5rem;}
+.ws-head{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:10px;}
+.email-render{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.5rem;font-family:var(--mono);font-size:12.5px;line-height:2;word-wrap:break-word;}
+.w-neutral{color:var(--text);}
+.w-good{background:rgba(34,221,136,0.15);color:var(--green);border-radius:2px;padding:1px 3px;}
+.w-bad{background:rgba(255,85,102,0.15);color:var(--red);border-radius:2px;padding:1px 3px;}
+.w-warn{background:rgba(245,197,66,0.15);color:var(--yellow);border-radius:2px;padding:1px 3px;}
+
+/* rewrite */
+.rewrite-block{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;margin-bottom:1.5rem;}
+.rw-head{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--bg3);border-bottom:1px solid var(--border);}
+.rw-label{font-family:var(--mono);font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--green);}
+.rw-actions{display:flex;gap:6px;}
+.rw-btn{font-family:var(--mono);font-size:10px;padding:4px 12px;border:1px solid var(--border2);border-radius:3px;background:none;color:var(--text2);cursor:pointer;transition:all 0.15s;}
+.rw-btn:hover{border-color:var(--green);color:var(--green);}
+.rw-section{padding:0;}
+.rw-part{padding:1rem 1.25rem;border-bottom:1px solid var(--border);}
+.rw-part:last-child{border-bottom:none;}
+.rw-part-label{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:6px;}
+.rw-part-text{font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--text);}
+
+/* checklist */
+.checklist{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.5rem;}
+@media(max-width:580px){.checklist{grid-template-columns:1fr;}}
+.check-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:12px;}
+.check-icon{font-family:var(--mono);font-size:13px;flex-shrink:0;margin-top:1px;}
+.check-text{font-family:var(--mono);font-size:11px;color:var(--text2);line-height:1.5;}
+
+/* spam signals */
+.spam-section{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:1.5rem;}
+.spam-head{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--bg3);border-bottom:1px solid var(--border);}
+.spam-title{font-family:var(--mono);font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text2);}
+.spam-score-pill{font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:3px;}
+.spam-body{padding:1rem 1.25rem;}
+.spam-found{font-family:var(--mono);font-size:11px;line-height:2;color:var(--text2);}
+.spam-word{color:var(--red);background:rgba(255,85,102,0.1);padding:1px 6px;border-radius:2px;margin-right:4px;}
+
+/* footer */
+.ft{padding-top:2rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.ft-text{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.05em;}
+.ft-link{color:var(--green);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hdr">
+    <div class="hdr-brand">Cold Email Analyzer · v2.0 · iamtheaak</div>
+    <div class="hdr-top">
+      <div>
+        <h1>Stop sending emails<br>that <span class="accent">get ignored.</span></h1>
+        <p class="hdr-sub">// paste any cold email → get scored across 7 dimensions → get a rewrite that converts</p>
+      </div>
+      <div class="live-badge"><div class="live-dot"></div>live · no api</div>
+    </div>
+  </header>
+
+  <div class="two-col">
+    <div class="field-block">
+      <label>subject line</label>
+      <input type="text" id="f-subject" placeholder="e.g. Quick question about your onboarding flow">
+    </div>
+    <div class="field-block">
+      <label>sender context (optional)</label>
+      <input type="text" id="f-sender" placeholder="e.g. SaaS founder, SDR, BD lead">
+    </div>
+  </div>
+
+  <div class="field-block" style="margin-bottom:10px;">
+    <label>email body</label>
+  </div>
+  <textarea id="f-body" placeholder="Paste your cold email here...
+
+Hi [Name],
+
+I noticed that..."></textarea>
+
+  <div class="char-row">
+    <span class="char-info" id="char-info">0 words · 0 chars</span>
+    <span class="word-count" id="wc-color" style="color:var(--text3)">ideal: 60–120 words</span>
+  </div>
+
+  <div class="tools-row">
+    <span class="tool-label">try:</span>
+    <button class="eg-btn" onclick="loadEg(0)">weak email</button>
+    <button class="eg-btn" onclick="loadEg(1)">average email</button>
+    <button class="eg-btn" onclick="loadEg(2)">strong email</button>
+    <button class="clear-btn" onclick="clearAll()">clear ×</button>
+  </div>
+
+  <button class="analyze-btn" id="analyze-btn" onclick="analyze()">→ analyze this email</button>
+
+  <div class="results" id="results">
+    <div class="score-banner" id="score-banner">
+      <div class="sb-left">
+        <div class="sb-tag" id="sb-tag"></div>
+        <div class="sb-title" id="sb-title"></div>
+        <div class="sb-desc" id="sb-desc"></div>
+      </div>
+      <div class="sb-score" id="sb-score"></div>
+    </div>
+
+    <div class="dim-grid" id="dim-grid"></div>
+
+    <div class="word-section">
+      <div class="ws-head">// word-level annotation</div>
+      <div class="email-render" id="email-render"></div>
+      <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--green)">■ power word</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--red)">■ spam / weak</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--yellow)">■ filler / hedge</span>
+      </div>
+    </div>
+
+    <div class="rewrite-block">
+      <div class="rw-head">
+        <span class="rw-label">// suggested rewrite</span>
+        <div class="rw-actions">
+          <button class="rw-btn" onclick="copyRewrite()">copy all</button>
+        </div>
+      </div>
+      <div class="rw-section" id="rw-section"></div>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:10px;">// best-practice checklist</div>
+    <div class="checklist" id="checklist"></div>
+
+    <div class="spam-section">
+      <div class="spam-head">
+        <span class="spam-title">// spam trigger risk</span>
+        <span class="spam-score-pill" id="spam-pill"></span>
+      </div>
+      <div class="spam-body" id="spam-body"></div>
+    </div>
+  </div>
+
+  <footer class="ft">
+    <span class="ft-text">built by <a href="https://iamtheaak.github.io" class="ft-link">iamtheaak</a> · no data sent anywhere · 100% browser</span>
+    <span class="ft-text">iim bangalore · 2026</span>
+  </footer>
+</div>
+
+<script>
+const EGS = [
+  {
+    subj:'Collaboration opportunity',
+    body:`Hi,
+
+I'm reaching out because I think there could be a great synergy between us. I'm very passionate about your company and would love to connect.
+
+I have a lot of experience in marketing and I believe I could add a lot of value to your team. Would love to hop on a quick call sometime to discuss further.
+
+Let me know if you're interested!
+
+Thanks,
+Alex`
+  },
+  {
+    subj:'Quick question about your growth strategy',
+    body:`Hi Sarah,
+
+I saw your post about scaling the sales team at [Company] — interesting timing given the Series B.
+
+I run outreach campaigns for B2B SaaS companies and have helped a few similar teams improve their cold email reply rates. Would it be worth a 15-minute call to share what's been working?
+
+Happy to send over some examples first if that's easier.
+
+Best,
+Alex`
+  },
+  {
+    subj:'Noticed something about your onboarding flow',
+    body:`Hi Marcus,
+
+I spent an hour going through [Product]'s onboarding yesterday — you're losing users at the third step. The value prop isn't landing before they hit the configuration screen.
+
+I've fixed this exact problem for two other fintech onboarding flows in the last quarter. One saw a 34% lift in activation within 3 weeks.
+
+15 minutes this week to show you what I found?
+
+— Alex`
+  }
+];
+
+document.getElementById('f-body').addEventListener('input', updateCount);
+document.getElementById('f-subject').addEventListener('input', updateCount);
+
+function loadEg(i){ document.getElementById('f-subject').value=EGS[i].subj; document.getElementById('f-body').value=EGS[i].body; updateCount(); }
+function clearAll(){ document.getElementById('f-subject').value=''; document.getElementById('f-body').value=''; updateCount(); document.getElementById('results').classList.remove('on'); }
+
+function updateCount(){
+  const body = document.getElementById('f-body').value;
+  const words = body.trim().split(/\s+/).filter(Boolean).length;
+  const chars = body.length;
+  document.getElementById('char-info').textContent = `${words} words · ${chars} chars`;
+  const wcc = document.getElementById('wc-color');
+  wcc.style.color = words >= 60 && words <= 120 ? 'var(--green)' : words > 120 ? 'var(--yellow)' : 'var(--text3)';
+}
+
+const SPAM_WORDS = ['free','guarantee','no obligation','act now','limited time','click here','urgent','winner','congratulations','exclusive offer','risk-free','100%','amazing','incredible','opportunity','make money','earn','cash','dear friend','valued customer','synergy','passionate','huge','revolutionary'];
+const POWER_WORDS = ['noticed','specific','found','built','shipped','results','increased','reduced','fixed','tested','measured','exactly','directly','data','proof'];
+const HEDGE_WORDS = ['maybe','perhaps','just','kind of','sort of','might','could','possibly','hopefully','i think','i believe','would love','love to','quick','brief','sometime','whenever','if you\'re interested','no worries'];
+const SPAM_SUB = ['opportunity','collaboration','partnership','quick question','following up','touching base','circling back','checking in','just wanted'];
+
+function scoreEmail(subj, body){
+  const words = body.trim().split(/\s+/).filter(Boolean);
+  const wc = words.length;
+  const bodyL = body.toLowerCase();
+  const subjL = subj.toLowerCase();
+
+  // 1. Subject line
+  const subjWords = subj.trim().split(/\s+/).filter(Boolean).length;
+  const subjSpam = SPAM_SUB.filter(w=>subjL.includes(w)).length;
+  const subjSpecific = (subj.match(/\b[A-Z][a-z]+|\d+/g)||[]).length;
+  const subjQ = subj.includes('?') ? 1 : 0;
+  let subjScore = Math.min(100, 35 + subjSpecific*12 + subjQ*15 - subjSpam*18 + (subjWords>=5&&subjWords<=9?15:0));
+  subjScore = Math.max(10, subjScore);
+
+  // 2. Personalisation
+  const persSignals = ['noticed','saw your','read your','checked your','your recent','your post','your product','your team','your company','you\'re','you are','specifically','['];
+  const persHits = persSignals.filter(s=>bodyL.includes(s)).length;
+  const persScore = Math.min(100, 15 + persHits * 18);
+
+  // 3. Clarity of ask
+  const askSignals = ['15 minutes','30 minutes','15-minute','30-minute','quick call','demo','meeting','this week','tuesday','wednesday','thursday','calendar','schedule','reply'];
+  const askHits = askSignals.filter(s=>bodyL.includes(s)).length;
+  const hasCTA = askHits > 0;
+  const clarityScore = Math.min(100, hasCTA ? 55 + askHits * 12 : 25);
+
+  // 4. Social proof / credibility
+  const proofSignals = ['%','x lift','results','customers','companies','helped','built','shipped',/\d+\s*(companies|clients|teams|users|customers)/];
+  const numStats = (body.match(/\d+[x%+]/g)||[]).length;
+  const proofHits = proofSignals.slice(0,-1).filter(s=>bodyL.includes(s)).length;
+  const proofScore = Math.min(100, 20 + proofHits * 15 + numStats * 20);
+
+  // 5. Length
+  let lengthScore = 0;
+  if(wc < 30) lengthScore = 30;
+  else if(wc <= 60) lengthScore = 65;
+  else if(wc <= 120) lengthScore = 95;
+  else if(wc <= 180) lengthScore = 72;
+  else if(wc <= 250) lengthScore = 50;
+  else lengthScore = 28;
+
+  // 6. Spam risk (inverted — high = bad)
+  const spamHits = SPAM_WORDS.filter(w=>bodyL.includes(w));
+  const spamScore = Math.max(10, 100 - spamHits.length * 20);
+
+  // 7. Value-first
+  const valueSignals = ['found','noticed','built','measured','tested','data','specifically','problem','issue','gap','opportunity','could help','fixed','improved'];
+  const selfSignals = ['i am','i\'m a','i have experience','i\'ve been','i work at','my background','i studied','i graduated','i\'m passionate'];
+  const valueHits = valueSignals.filter(s=>bodyL.includes(s)).length;
+  const selfHits = selfSignals.filter(s=>bodyL.includes(s)).length;
+  const valueScore = Math.min(100, 20 + valueHits * 14 - selfHits * 15);
+
+  const overall = Math.round((subjScore*1.2 + persScore*1.3 + clarityScore*1.2 + proofScore*1.1 + lengthScore*0.9 + spamScore*0.8 + Math.max(10,valueScore)*1.2)/7.7);
+
+  return { overall, dims:{
+    subjectLine: Math.round(subjScore),
+    personalisation: Math.round(persScore),
+    clarityOfAsk: Math.round(clarityScore),
+    socialProof: Math.round(proofScore),
+    length: Math.round(lengthScore),
+    spamRisk: Math.round(spamScore),
+    valueFirst: Math.max(10,Math.round(valueScore))
+  }, spamWords: spamHits, wc };
+}
+
+function annotateEmail(body){
+  const pw = new RegExp('\\b(' + POWER_WORDS.join('|') + ')\\b','gi');
+  const hw = new RegExp('\\b(' + HEDGE_WORDS.join('|').replace(/\s+/g,'\\s+') + ')\\b','gi');
+  const sw = new RegExp('\\b(' + SPAM_WORDS.join('|') + ')\\b','gi');
+  let html = body.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  html = html.replace(pw,'<span class="w-good">$1</span>');
+  html = html.replace(sw,'<span class="w-bad">$1</span>');
+  html = html.replace(hw,'<span class="w-warn">$1</span>');
+  html = html.replace(/\n/g,'<br>');
+  return html;
+}
+
+function buildRewrite(subj, body, scores){
+  const parts = [];
+  const s = scores.dims;
+
+  // subject
+  let newSubj = subj;
+  if(s.subjectLine < 60){
+    const lines = body.split('\n').filter(l=>l.trim().length>10);
+    const firstLine = lines[0]||'';
+    if(firstLine.toLowerCase().includes('noticed') || firstLine.toLowerCase().includes('found')){
+      newSubj = firstLine.substring(0,55).trim();
+    } else {
+      newSubj = 'Noticed something specific about ' + (body.match(/\b[A-Z][a-z]{3,}\b/)||['your product'])[0];
+    }
+  }
+  parts.push({label:'subject line', text: newSubj});
+
+  // opener
+  let opener = '';
+  if(s.personalisation < 55){
+    opener = `I noticed [specific thing about their product/company/post] — [one sentence observation that shows you actually looked].`;
+  } else {
+    const lines = body.split('\n').filter(l=>l.trim()&&!l.toLowerCase().startsWith('hi')&&!l.toLowerCase().startsWith('hey'));
+    opener = lines[0]||'[Your specific observation here.]';
+  }
+  parts.push({label:'opener (lead with observation)', text: opener});
+
+  // value
+  let value = '';
+  if(s.socialProof < 55 || s.valueFirst < 55){
+    value = `I've [specific result] for [type of company] — [one concrete stat or example]. [One sentence connecting that to their situation].`;
+  } else {
+    const lines = body.split('\n').filter(l=>l.trim());
+    value = lines[Math.floor(lines.length/2)]||'[Your credibility proof here — one stat, one outcome, one company.]';
+  }
+  parts.push({label:'credibility (one stat only)', text: value});
+
+  // cta
+  let cta = '';
+  if(s.clarityOfAsk < 60){
+    cta = `15 minutes this week to [specific outcome of the call]?`;
+  } else {
+    const ctaLines = body.split('\n').filter(l=>l.toLowerCase().includes('call')||l.toLowerCase().includes('minute')||l.toLowerCase().includes('week'));
+    cta = ctaLines[0]||'15 minutes this week?';
+  }
+  parts.push({label:'CTA (single, specific)', text: cta.trim()});
+
+  return parts;
+}
+
+function analyze(){
+  const subj = document.getElementById('f-subject').value.trim();
+  const body = document.getElementById('f-body').value.trim();
+  if(!body){ alert('Paste an email body first.'); return; }
+
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled=true; btn.textContent='→ analyzing...';
+
+  setTimeout(()=>{
+    const scores = scoreEmail(subj, body);
+    renderResults(subj, body, scores);
+    document.getElementById('results').classList.add('on');
+    document.getElementById('results').scrollIntoView({behavior:'smooth'});
+    btn.disabled=false; btn.textContent='→ analyze this email';
+  },500);
+}
+
+function renderResults(subj, body, scores){
+  const s = scores.overall;
+  const tier = s>=72?'high-performer':s>=50?'needs work':'not sending this';
+  const color = s>=72?'var(--green)':s>=50?'var(--yellow)':'var(--red)';
+  const borderC = s>=72?'rgba(34,221,136,0.3)':s>=50?'rgba(245,197,66,0.3)':'rgba(255,85,102,0.3)';
+  const bgC = s>=72?'rgba(34,221,136,0.04)':s>=50?'rgba(245,197,66,0.04)':'rgba(255,85,102,0.04)';
+  const titles = {'high-performer':'This email will get replies.','needs work':'This email needs work before sending.','not sending this':'Don\'t send this.'};
+  const descs = {
+    'high-performer':`Scoring ${s}/100. Strong personalisation, clear ask, and value-first framing. Watch the spam signals and you\'re ready to scale this.`,
+    'needs work':`Scoring ${s}/100. The core intent is there but key elements are weak. Fix the highlighted dimensions before sending at volume.`,
+    'not sending this':`Scoring ${s}/100. This email has critical issues — likely to be ignored, marked spam, or damage your sender reputation. Rewrite using the suggestions below.`
+  };
+
+  const banner = document.getElementById('score-banner');
+  banner.style.borderColor = borderC; banner.style.background = bgC;
+  document.getElementById('sb-tag').textContent = `// ${tier}`; document.getElementById('sb-tag').style.color = color;
+  document.getElementById('sb-title').textContent = titles[tier];
+  document.getElementById('sb-desc').textContent = descs[tier];
+  document.getElementById('sb-score').textContent = s; document.getElementById('sb-score').style.color = color;
+
+  // dims
+  const dimDefs = [
+    {key:'subjectLine',name:'Subject Line',fix:{lo:'Avoid generic subjects like "collaboration" or "opportunity". Use a specific observation instead.',hi:'Subject is specific and curiosity-inducing. Good.'}},
+    {key:'personalisation',name:'Personalisation',fix:{lo:'Lead with something specific to them — a post, product detail, or company news. Generic openers kill replies.',hi:'Personalisation signals are present. Feels less like a blast email.'}},
+    {key:'clarityOfAsk',name:'Clarity of Ask',fix:{lo:'Your CTA is vague or missing. Specify: "15 minutes this Thursday?" not "let me know if interested".',hi:'Clear, specific ask. The reader knows exactly what you want.'}},
+    {key:'socialProof',name:'Social Proof',fix:{lo:'Add one concrete result or stat. Not a list of clients — one outcome. "34% lift in activation in 3 weeks."',hi:'Credibility signal present. One stat is better than a name-drop.'}},
+    {key:'length',name:'Length',fix:{lo:scores.wc<40?'Too short — add specific context.':'Too long — cut everything that doesn\'t directly serve the ask.',hi:'Ideal length range. Respects the recipient\'s time.'}},
+    {key:'spamRisk',name:'Spam Safety',fix:{lo:'Remove spam trigger words. They affect deliverability and signal low quality to the recipient.',hi:'Clean spam profile. Good deliverability signal.'}},
+    {key:'valueFirst',name:'Value-First',fix:{lo:'Don\'t open with who you are. Open with what you noticed about them. Self-intro kills cold emails.',hi:'Value-first framing. The email is about them, not you.'}},
+  ];
+
+  const grid = document.getElementById('dim-grid');
+  grid.innerHTML='';
+  dimDefs.forEach(d=>{
+    const v = scores.dims[d.key];
+    const c = v>=70?'var(--green)':v>=50?'var(--yellow)':'var(--red)';
+    const fixBg = v>=70?'rgba(34,221,136,0.08)':v>=50?'rgba(245,197,66,0.08)':'rgba(255,85,102,0.08)';
+    const fixColor = v>=70?'var(--green)':v>=50?'var(--yellow)':'var(--red)';
+    const fixText = v>=70?d.fix.hi:d.fix.lo;
+    grid.innerHTML+=`<div class="dim-card">
+      <div class="dc-top"><span class="dc-name">${d.name}</span><span class="dc-score" style="color:${c}">${v}/100</span></div>
+      <div class="dc-bar"><div class="dc-fill" style="background:${c}" data-w="${v}"></div></div>
+      <div class="dc-note">${fixText}</div>
+    </div>`;
+  });
+  setTimeout(()=>{ document.querySelectorAll('.dc-fill').forEach(el=>{el.style.width=el.dataset.w+'%';}); },50);
+
+  // word annotation
+  document.getElementById('email-render').innerHTML = (subj?`<strong>Subject:</strong> ${subj}<br><br>`:'') + annotateEmail(body);
+
+  // rewrite
+  const parts = buildRewrite(subj, body, scores);
+  const rws = document.getElementById('rw-section');
+  rws.innerHTML='';
+  parts.forEach(p=>{
+    rws.innerHTML+=`<div class="rw-part"><div class="rw-part-label">${p.label}</div><div class="rw-part-text">${p.text}</div></div>`;
+  });
+
+  // checklist
+  const checks = [
+    {ok: scores.dims.personalisation>=55, text:'Opens with something specific to the recipient'},
+    {ok: scores.dims.clarityOfAsk>=55, text:'Single, time-specific CTA (e.g. "15 min Thursday?")'},
+    {ok: scores.dims.socialProof>=50, text:'One concrete stat or proof point'},
+    {ok: scores.dims.valueFirst>=55, text:'Value-first — about them, not about you'},
+    {ok: scores.wc>=60&&scores.wc<=120, text:'60–120 words — respects their time'},
+    {ok: scores.dims.spamRisk>=65, text:'No spam trigger words detected'},
+    {ok: scores.dims.subjectLine>=55, text:'Subject line is specific, not generic'},
+    {ok: !body.toLowerCase().includes('hope this finds you'), text:'No "hope this finds you well"'},
+  ];
+  const cl = document.getElementById('checklist');
+  cl.innerHTML='';
+  checks.forEach(c=>{
+    cl.innerHTML+=`<div class="check-item">
+      <span class="check-icon" style="color:${c.ok?'var(--green)':'var(--red)'}">${c.ok?'✓':'✗'}</span>
+      <span class="check-text" style="color:${c.ok?'var(--text2)':'var(--text)'}">${c.text}</span>
+    </div>`;
+  });
+
+  // spam
+  const sp = document.getElementById('spam-pill');
+  const spCount = scores.spamWords.length;
+  sp.textContent = spCount===0?'clean':spCount<=2?'low risk':'high risk';
+  sp.style.background = spCount===0?'rgba(34,221,136,0.1)':spCount<=2?'rgba(245,197,66,0.1)':'rgba(255,85,102,0.1)';
+  sp.style.color = spCount===0?'var(--green)':spCount<=2?'var(--yellow)':'var(--red)';
+  sp.style.border = `1px solid ${spCount===0?'rgba(34,221,136,0.3)':spCount<=2?'rgba(245,197,66,0.3)':'rgba(255,85,102,0.3)'}`;
+  const sb = document.getElementById('spam-body');
+  sb.innerHTML = spCount===0
+    ? '<span class="spam-found">No spam triggers detected. Good deliverability signal.</span>'
+    : `<span class="spam-found">Found ${spCount} trigger word${spCount>1?'s':''}: ${scores.spamWords.map(w=>`<span class="spam-word">${w}</span>`).join('')}<br>Remove or reword these before sending at volume.</span>`;
+}
+
+let rewriteData='';
+function copyRewrite(){
+  const parts = document.querySelectorAll('.rw-part-text');
+  rewriteData = Array.from(parts).map(p=>p.textContent).join('\n\n');
+  navigator.clipboard.writeText(rewriteData).then(()=>{
+    const btn = document.querySelector('.rw-btn');
+    btn.textContent='copied!'; setTimeout(()=>btn.textContent='copy all',1500);
+  });
+}
+</script>
+</body>
+</html>
