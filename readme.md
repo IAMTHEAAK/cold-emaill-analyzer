@@ -16,7 +16,7 @@ Most cold emails fail for the same structural reasons not bad luck. This tool id
 | **Personalisation** | Evidence of actual research: posts, product details, company news |
 | **Clarity of Ask** | Whether CTA is specific, time-bound, and low-friction |
 | **Social Proof** | Concrete stats, outcomes, and credibility signals |
-| **Length** | Word count — ideal range is 60–120 words |
+| **Length** | Word count ideal range is 60–120 words |
 | **Spam Safety** | Trigger words that hurt deliverability and signal low quality |
 | **Value-First** | Whether the email opens for them or about you |
 
