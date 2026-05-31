@@ -44,6 +44,7 @@ Pure HTML, CSS, JavaScript. Regex-based word analysis. No API calls, no data sto
 ## Why I built this
 
 After running 3 cold outreach campaigns (at Cosmofeed and personally), I noticed the same mistakes appearing across emails: generic subjects, self-focused openers, vague asks. I wanted a tool that made the structural rules visible and testable, not just documented in a blog post.
+
 ---
 
 Built by [Ayush Khandual](https://iamtheaak.github.io) · IIM Bangalore · 2026
